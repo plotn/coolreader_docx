@@ -1,0 +1,113 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 26
+    buildToolsVersion '27.0.3'
+    defaultConfig {
+        applicationId "org.coolreader.docx"
+        minSdkVersion 21
+        targetSdkVersion 25
+        // if you need to support minSdkVersion 15, see https://developer.android.com/studio/build/multidex.html
+        multiDexEnabled true
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+
+    sourceSets {
+        main {
+            resources.includes = [ 'src/main/assets/docx4j.properties' ]
+        }
+    }
+
+    buildTypes {
+        debug {
+            // app-debug.apk is 6443 kb with minifyEnabled, 11025 kb otherwise
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    dexOptions {
+        // Comment the following in order to see actual errors, not unhelpful "too many errors"!
+//        preDexLibraries = false
+        additionalParameters=['--core-library']
+    }
+
+    compileOptions {
+        sourceCompatibility = org.gradle.api.JavaVersion.VERSION_1_7
+        targetCompatibility = org.gradle.api.JavaVersion.VERSION_1_7
+    }
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES.txt'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/notice.txt'
+        exclude 'META-INF/license.txt'
+        exclude 'META-INF/dependencies.txt'
+        exclude 'META-INF/LGPL2.1'
+        exclude 'readme.html'
+        exclude 'license.html'
+        exclude 'META-INF/eclipse.inf'
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def project = "CoolReaderDocx"
+            def SEP = "_"
+            def buildType = variant.variantData.variantConfiguration.buildType.name
+            def version = variant.versionName
+            def date = new Date();
+            def formattedDate = date.format('yyyyMMdd_HHmm')
+
+            def newApkName = project + SEP + buildType + SEP + version + SEP + formattedDate + ".apk"
+
+            outputFileName = new File(newApkName)
+        }
+    }
+
+
+}
+
+//configurations {
+//    compile.exclude group: "commons-logging", module: "commons-logging"
+//}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    androidTestImplementation('com.android.support.test.espresso:espresso-core:2.2.2', {
+        exclude group: 'com.android.support', module: 'support-annotations'
+    })
+    implementation 'com.android.support:appcompat-v7:26.+'
+    implementation 'com.android.support:design:26+'
+    testImplementation 'junit:junit:4.12'
+    implementation 'javax.xml.bind:jaxb-api:2.2.12'
+
+    implementation 'javax.xml.stream:stax-api:1.0-2'
+    implementation 'com.fasterxml:aalto-xml:1.0.0'
+    //compile 'org.codehaus.woodstox:stax2-api:4.0.0'
+
+    implementation files('libs/awt-bastardised-17v8.jar')
+    implementation files('libs/slf4j-android-1.6.1-RC1.jar')
+    implementation files('libs/activation.jar')
+    implementation files('libs/additionnal.jar')
+    implementation files('libs/jaxb-core-2.3.0-SNAPSHOT-ANDROID.jar')
+    implementation files('libs/jaxb-runtime-2.3.0-SNAPSHOT-ANDROID.jar')
+    implementation files('libs/istack-commons-runtime-3.0.4-SNAPSHOT.jar')
+    implementation files('libs/docx4j-3.3.5-SNAPSHOT2-shaded.jar')
+  //  compile files('libs/docx4j-3.3.5-SNAPSHOT2-shaded.jar')
+
+    // https://mvnrepository.com/artifact/org.docx4j/docx4j
+    //implementation 'org.docx4j:docx4j:3.3.7-SNAPSHOT2-shaded'
+
+    implementation files('libs/jaxp-datatype.jar')
+
+    // with org.slf4j removed
+}
