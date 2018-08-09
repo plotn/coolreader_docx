@@ -61,7 +61,8 @@
             android:id="@+id/convert_message"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:inputType="none"
+            android:inputType="textMultiLine"
+            android:lines="8"
             android:singleLine="false"
             android:maxLines="10"
             android:text="" />

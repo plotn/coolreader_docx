@@ -5,7 +5,7 @@ android {
     buildToolsVersion '27.0.3'
     defaultConfig {
         applicationId "org.coolreader.docx"
-        minSdkVersion 21
+        minSdkVersion 24
         targetSdkVersion 25
         // if you need to support minSdkVersion 15, see https://developer.android.com/studio/build/multidex.html
         multiDexEnabled true
@@ -108,6 +108,8 @@ dependencies {
     //implementation 'org.docx4j:docx4j:3.3.7-SNAPSHOT2-shaded'
 
     implementation files('libs/jaxp-datatype.jar')
+    implementation files('libs/OpenDocument.jar')
+    implementation files('libs/commons.jar')
 
     // with org.slf4j removed
 }

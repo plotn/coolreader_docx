@@ -2,14 +2,10 @@ package org.coolreader.docx;
 
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Menu;
@@ -23,19 +19,38 @@ import org.docx4j.Docx4jProperties;
 import org.docx4j.XmlUtils;
 import org.docx4j.convert.out.html.HtmlExporterNonXSLT;
 import org.docx4j.jaxb.Context;
-import org.docx4j.jaxb.XPathBinderAssociationIsPartialException;
 import org.docx4j.model.images.ConversionImageHandler;
-import org.docx4j.openpackaging.exceptions.Docx4JException;
-import org.docx4j.openpackaging.exceptions.InvalidFormatException;
-import org.docx4j.openpackaging.io.LoadFromZipNG;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
-import org.docx4j.wml.Document;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.OutputStreamWriter;
+import java.nio.charset.Charset;
 
-import javax.xml.bind.JAXBException;
-
+import at.stefl.commons.lwxml.writer.LWXMLStreamWriter;
+import at.stefl.commons.lwxml.writer.LWXMLWriter;
+import at.stefl.commons.math.vector.Vector2i;
+import at.stefl.opendocument.java.odf.LocatedOpenDocumentFile;
+import at.stefl.opendocument.java.odf.OpenDocument;
+import at.stefl.opendocument.java.odf.OpenDocumentPresentation;
+import at.stefl.opendocument.java.odf.OpenDocumentSpreadsheet;
+import at.stefl.opendocument.java.odf.OpenDocumentText;
+import at.stefl.opendocument.java.translator.document.BulkPresentationTranslator;
+import at.stefl.opendocument.java.translator.document.BulkSpreadsheetTranslator;
+import at.stefl.opendocument.java.translator.document.DocumentTranslator;
+import at.stefl.opendocument.java.translator.document.DocumentTranslatorUtil;
+import at.stefl.opendocument.java.translator.document.GenericBulkDocumentTranslator;
+import at.stefl.opendocument.java.translator.document.PresentationTranslator;
+import at.stefl.opendocument.java.translator.document.SpreadsheetTranslator;
+import at.stefl.opendocument.java.translator.document.TextTranslator;
+import at.stefl.opendocument.java.translator.settings.ImageStoreMode;
+import at.stefl.opendocument.java.translator.settings.TranslationSettings;
+import at.stefl.opendocument.java.util.DefaultFileCache;
+import at.stefl.opendocument.java.util.FileCache;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -74,6 +89,74 @@ public class MainActivity extends AppCompatActivity {
         return sNewName;
     }
 
+    private String convertOdtFile(String sFile, String sPath) throws
+            java.io.IOException {
+
+        File f = new File(sFile);
+        File directory = new File(sPath);
+        if(!directory.exists()){
+            directory.mkdir();
+        }
+        String sNewName = sPath + f.getName()+".html";
+        String IMAGE_DIR_NAME = sPath + f.getName()+"_images";
+        String baseURL = f.getName()+"_images/";
+
+        File folder = new File(IMAGE_DIR_NAME);
+        if (!folder.exists())
+            folder.mkdir();
+
+        File htmlFile = new File(sNewName);
+        LWXMLWriter out = new LWXMLStreamWriter(new OutputStreamWriter(
+                new FileOutputStream(htmlFile), Charset.forName("UTF-8")));
+
+        //FileCache cache = new DefaultFileCache(this.getExternalCacheDir()+"/tempOdt");
+        FileCache cache = new DefaultFileCache(IMAGE_DIR_NAME);
+
+        TranslationSettings settings = new TranslationSettings();
+        settings.setCache(cache);
+        settings.setImageStoreMode(ImageStoreMode.CACHE);
+        settings.setBackTranslateable(true);
+
+        LocatedOpenDocumentFile documentFile = null;
+        File cachedFile = new File(sFile);
+        documentFile = new LocatedOpenDocumentFile(cachedFile);
+        OpenDocument document = documentFile.getAsDocument();
+        DocumentTranslator translator;
+        if (document instanceof OpenDocumentText) {
+            translator = new TextTranslator();
+        } else if (document instanceof OpenDocumentSpreadsheet) {
+            translator = new SpreadsheetTranslator();
+        } else if (document instanceof OpenDocumentPresentation) {
+            translator = new PresentationTranslator();
+        } else {
+            throw new IllegalArgumentException();
+        }
+        long start = System.nanoTime();
+        translator.translate(document, out, settings);
+        //src="file:/storage/emulated/0/Books/converted/test_odt.odt_images/100002010000078000000438557A3697D0567655.png"/>
+        long end = System.nanoTime();
+        System.out.println((end - start) / 1000000000d);
+        System.out.println(translator.isCurrentOutputTruncated());
+        out.close();
+        //replace links with relative path
+        BufferedReader br = new BufferedReader(new FileReader(sNewName));
+        BufferedWriter bw = new BufferedWriter(new FileWriter(sNewName+"_"));
+        String line = br.readLine();
+        while (line != null) {
+            line=line.replace("file:"+sPath,"");
+            bw.write(line);
+            bw.write(System.lineSeparator());
+            line = br.readLine();
+        }
+        bw.close();
+        br.close();
+        File file = new File(sNewName);
+        if (file.exists()) file.delete();
+        File file2 = new File(sNewName+"_");
+        file2.renameTo(file);
+        return sNewName;
+    }
+
     @Override
     protected void onNewIntent(Intent intent) {
         Toast toast = Toast.makeText(MainActivity.this, "New intent!!!",
@@ -95,7 +178,7 @@ public class MainActivity extends AppCompatActivity {
         final String sFile = intent.getStringExtra(Intent.EXTRA_TEXT);
         final String sPath = intent.getStringExtra(Intent.EXTRA_SUBJECT);
 
-        //final String sFile = "/storage/emulated/0/Books/33.docx";
+        //final String sFile = "/storage/emulated/0/Books/test_odt.odt";
         //final String sPath = "/storage/emulated/0/Books/converted/";
 
         EditText edInpFile = (EditText)findViewById(R.id.inp_file);
@@ -108,7 +191,13 @@ public class MainActivity extends AppCompatActivity {
 
         edInpFile.setText(sFile);
         edSaveTo.setText(sPath);
-
+//        try {
+//            String sNewName = convertOdtFile(sFile, sPath);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            finish();
+//        }
+//        if (1==1) return;
         if (sFile == null) {
             edConvertMessage.setText("This application should not be run standalone, it should be called from within CoolReader");
         } else {
@@ -122,7 +211,15 @@ public class MainActivity extends AppCompatActivity {
                     boolean bErr = false;
                     String sNewName = "";
                     try {
-                        sNewName = convertDocxFile(sFile, sPath);
+                        if (
+                            (sFile.toUpperCase().endsWith(".ODT"))||
+                            (sFile.toUpperCase().endsWith(".ODP"))||
+                            (sFile.toUpperCase().endsWith(".ODS"))
+                                ) {
+                            sNewName = convertOdtFile(sFile, sPath);
+                        } else {
+                            sNewName = convertDocxFile(sFile, sPath);
+                        }
                     } catch (Exception e) {
                         sText1 = "There was an error during conversion:\n\n"+e.getMessage()+"\n\n"+e.getStackTrace().toString();
                         bErr = true;
